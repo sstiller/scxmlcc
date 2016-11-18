@@ -26,7 +26,6 @@
 
 using namespace std;
 
-
 string event_name(string event)
 {
 	string name = "event";
@@ -79,7 +78,7 @@ void cpp_output::gen_transition_base()
        	out << tab << tab << tab << "if(!transition_actions<E, S, D>::condition(sc.model)) return 0;" << endl;
 	if(opt.debug) out << tab << tab << tab << "std::clog << \"" << classname() << ": transition \" << typeid(S).name() << \" -> \" << typeid(D).name() << std::endl;" << endl;
 	if(sc.using_parallel) out << tab << tab << tab << "s->exit_parallel(sc, s, &d);" << endl;
-       	if(sc.using_compound) out << tab << tab << tab << "s->exit(sc.model, typeid(S));" << endl;
+       	if(sc.using_compound) out << tab << tab << tab << "s->exit(sc.model, S::id());" << endl;
        	out << tab << tab << tab << "state_exit(s, sc.model, id<T>(), (typename D::parent_t*)0);" << endl;
        	out << tab << tab << tab << "transition_actions<E, S, D>::enter(sc.model);" << endl;
        	out << tab << tab << tab << "state_enter(d, sc.model, id<T>(), (typename D::parent_t*)0);" << endl;
@@ -143,7 +142,7 @@ void cpp_output::gen_transition_base()
 		}
 
 		out << tab << tab << tab << "s->exit_parallel(sc, s, &d0);" << endl;
-		if(sc.using_compound) out << tab << tab << tab << "s->exit(sc.model, typeid(S));" << endl;
+		if(sc.using_compound) out << tab << tab << tab << "s->exit(sc.model, S::id());" << endl;
 		out << tab << tab << tab << "s->template exit<D0>(sc.model, (D0*)0);" << endl;
 
 		out << tab << tab << tab << "transition_actions<E, S";
@@ -184,6 +183,7 @@ void cpp_output::gen_state_composite_base()
 	// lca calculation
 	out << tab << tab << "public:" << endl;
 	out << tab << tab << "typedef P parent_t;" << endl;
+	out << tab << tab << "static const void* id() { static const struct{} _id; return &_id; }" << endl;
 	out << tab << tab << "// LCA calculation" << endl;
 	out << tab << tab << "template<class T> void enter(data_model&, " << state_composite_t() << "*) {}" << endl;
 
@@ -198,7 +198,7 @@ void cpp_output::gen_state_composite_base()
 	out << " state_actions<C>::exit(m); P::template exit<T>(m, (T*)0); }" << endl;
 	
 	if(sc.using_compound) {
-		out << tab << tab << "virtual void exit(data_model &m, const std::type_info &sti) { if(typeid(C) == sti) return;";
+		out << tab << tab << "virtual void exit(data_model &m, const void *sti) { if(C::id() == sti) return;";
 		if(opt.debug) out << " std::clog << \"" << classname() << ": exit \" << typeid(C).name() << std::endl;";
 	       	out << " state_actions<C>::exit(m); P::exit(m, sti); }" << endl;
 	}
@@ -298,15 +298,15 @@ void cpp_output::gen_state_parallel_base()
 	        out << tab << tab << '}' << endl;
 		out << endl;
 
-		out << tab << tab << "bool parallel_parent(const std::type_info& pti) { return typeid(C) == pti; }" << endl;
+		out << tab << tab << "bool parallel_parent(const void *pti) { return C::id() == pti; }" << endl;
 		out << tab << tab << "void exit_parallel(" << classname() << " &sc, C*, C*) {}" << endl;
 		out << tab << tab << "void exit_parallel(" << classname() << " &sc, C *s, state *d)" << endl;
 		out << tab << tab << '{' << endl;
 		out << tab << tab << tab << "// parallel state exited from C or child" << endl;
 		out << tab << tab << tab << "for(" << classname() << "::cur_state_l::iterator i = sc.cur_state.begin(); (i != sc.cur_state.end()) && *i; ++i) {" << endl;
 		out << tab << tab << tab << tab << "if(this == *i) continue;" << endl;
-		out << tab << tab << tab << tab << "if(!(*i)->parallel_parent(typeid(C))) continue;" << endl;
-		out << tab << tab << tab << tab << "(*i)->exit(sc.model, typeid(C));" << endl;
+		out << tab << tab << tab << tab << "if(!(*i)->parallel_parent(C::id())) continue;" << endl;
+		out << tab << tab << tab << tab << "(*i)->exit(sc.model, C::id());" << endl;
 		out << tab << tab << tab << tab << "*i = 0;" << endl;
 		out << tab << tab << tab << '}' << endl;
 		out << tab << tab << tab << "P::exit_parallel(sc, s, d);" << endl;
@@ -450,11 +450,11 @@ void cpp_output::gen_state_base()
 
 	out << tab << tab << "template<class T> void enter(data_model&, ...) {}" << endl;
 	out << tab << tab << "template<class T> void exit(data_model&, ...) {}" << endl;
-	if(sc.using_compound) out << tab << tab << "virtual void exit(data_model&, const std::type_info&) {}" << endl;
+	if(sc.using_compound) out << tab << tab << "virtual void exit(data_model&, const void*) {}" << endl;
 	if(sc.using_parallel) {
  		out << tab << tab << "template<class S> " << state_t() << "* enter_parallel(" << classname() << "&, " << state_t() << "*, " << state_t() << "*) { return this; }" << endl;
  		out << tab << tab << "virtual void exit_parallel(" << classname() << "&, " << state_t() << "*, " << state_t() << "*) {}" << endl;
- 		out << tab << tab << "virtual bool parallel_parent(const std::type_info&) { return false; }" << endl;
+ 		out << tab << tab << "virtual bool parallel_parent(const void*) { return false; }" << endl;
 	}
 
 	// removed - this may require delete() wihich is'nt available in some embedded setups
@@ -905,7 +905,7 @@ void cpp_output::gen()
 	out << "#define __SC_" << boost::to_upper_copy(sc.sc().name) << endl;
 	out << endl;
 
-	if(sc.using_compound || opt.debug) out << "#include <typeinfo>" << endl;
+	if(opt.debug) out << "#include <typeinfo>" << endl;
 	if(!opt.bare_metal) out << "#include <queue>" << endl;
 	if(opt.debug || sc.using_log) out << "#include <iostream>" << endl;
 	out << endl;
