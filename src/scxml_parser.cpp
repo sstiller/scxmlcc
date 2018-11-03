@@ -16,7 +16,6 @@
  *************************************************************************/
 
 #include "scxml_parser.h"
-#include <boost/smart_ptr/make_shared.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <iostream>
@@ -41,10 +40,10 @@ void scxml_parser::parse_scxml(const ptree &pt)
 		for (ptree::const_iterator it = pt.begin(); it != pt.end(); ++it) {
 			if (it->first == "<xmlcomment>") ; // ignore comments
 			else if (it->first == "<xmlattr>") ; // ignore, parsed above
-			else if (it->first == "state") parse_state(it->second, boost::shared_ptr<state>());
-			else if (it->first == "history") parse_state(it->second, boost::shared_ptr<state>());
-			else if (it->first == "final") parse_final(it->second, boost::shared_ptr<state>());
-			else if (it->first == "parallel") parse_parallel(it->second, boost::shared_ptr<state>());
+			else if (it->first == "state") parse_state(it->second, std::shared_ptr<state>());
+			else if (it->first == "history") parse_state(it->second, std::shared_ptr<state>());
+			else if (it->first == "final") parse_final(it->second, std::shared_ptr<state>());
+			else if (it->first == "parallel") parse_parallel(it->second, std::shared_ptr<state>());
 			else if (it->first == "initial") m_scxml.initial = parse_initial(it->second);
 			else if (it->first == "datamodel") m_scxml.datamodel = parse_datamodel(it->second);
 			else if (std::regex_match(it->first, ignore_elements_re)) ; // ignore
@@ -70,12 +69,12 @@ void scxml_parser::parse_scxml(const ptree &pt)
 	}
 }
 
-void scxml_parser::parse_parallel(const ptree &pt, const boost::shared_ptr<state> &parent)
+void scxml_parser::parse_parallel(const ptree &pt, const std::shared_ptr<state> &parent)
 {
 	try {
 		using_parallel = true;
 		const ptree &xmlattr = pt.get_child("<xmlattr>");
-		boost::shared_ptr<state> st = boost::make_shared<state>();
+		auto st = std::make_shared<state>();
 		st->id = xmlattr.get<string>("id");
 		if(parent) {
 			using_compound = true;
@@ -110,9 +109,9 @@ void scxml_parser::parse_parallel(const ptree &pt, const boost::shared_ptr<state
 	}
 }
 
-boost::shared_ptr<scxml_parser::data> scxml_parser::parse_data(const ptree &pt)
+std::shared_ptr<scxml_parser::data> scxml_parser::parse_data(const ptree &pt)
 {
-	boost::shared_ptr<scxml_parser::data> data = boost::make_shared<scxml_parser::data>();
+	auto data = std::make_shared<scxml_parser::data>();
 	
 	try {
 		using namespace boost::algorithm;
@@ -178,12 +177,12 @@ scxml_parser::transition scxml_parser::parse_initial(const ptree &pt)
 	return initial;
 }
 
-void scxml_parser::parse_state(const ptree &pt, const boost::shared_ptr<state> &parent)
+void scxml_parser::parse_state(const ptree &pt, const std::shared_ptr<state> &parent)
 {
 	try {
 		using namespace boost::algorithm;
 		const ptree &xmlattr = pt.get_child("<xmlattr>");
-		boost::shared_ptr<state> st = boost::make_shared<state>();
+		auto st = std::make_shared<state>();
 		st->id = xmlattr.get<string>("id");
 		if(parent) {
 			using_compound = true;
@@ -221,13 +220,13 @@ void scxml_parser::parse_state(const ptree &pt, const boost::shared_ptr<state> &
 	}
 }
 
-void scxml_parser::parse_final(const ptree &pt, const boost::shared_ptr<state> &parent)
+void scxml_parser::parse_final(const ptree &pt, const std::shared_ptr<state> &parent)
 {
 	try {
 		using_final = true;
 		using namespace boost::algorithm;
 		const ptree &xmlattr = pt.get_child("<xmlattr>");
-		boost::shared_ptr<state> st = boost::make_shared<state>();
+		auto st = std::make_shared<state>();
 		st->id = xmlattr.get<string>("id");
 		if(parent) {
 			using_compound = true;
@@ -277,9 +276,9 @@ scxml_parser::plist<scxml_parser::action> scxml_parser::parse_entry(const ptree 
 	return l_ac;
 }
 
-boost::shared_ptr<scxml_parser::action> scxml_parser::parse_raise(const ptree &pt)
+std::shared_ptr<scxml_parser::action> scxml_parser::parse_raise(const ptree &pt)
 {
-	boost::shared_ptr<action> ac = boost::make_shared<action>();
+	auto ac = std::make_shared<action>();
 	try {
 		const ptree &xmlattr = pt.get_child("<xmlattr>");
 
@@ -304,9 +303,9 @@ boost::shared_ptr<scxml_parser::action> scxml_parser::parse_raise(const ptree &p
 	return ac;
 }
 
-boost::shared_ptr<scxml_parser::action> scxml_parser::parse_log(const ptree &pt)
+std::shared_ptr<scxml_parser::action> scxml_parser::parse_log(const ptree &pt)
 {
-	boost::shared_ptr<action> ac = boost::make_shared<action>();
+	auto ac = std::make_shared<action>();
 	try {
 		const ptree &xmlattr = pt.get_child("<xmlattr>");
 
@@ -333,9 +332,9 @@ boost::shared_ptr<scxml_parser::action> scxml_parser::parse_log(const ptree &pt)
 	return ac;
 }
 
-boost::shared_ptr<scxml_parser::action> scxml_parser::parse_assign(const ptree &pt)
+std::shared_ptr<scxml_parser::action> scxml_parser::parse_assign(const ptree &pt)
 {
-	boost::shared_ptr<action> ac = boost::make_shared<action>();
+	auto ac = std::make_shared<action>();
 	try {
 		const ptree &xmlattr = pt.get_child("<xmlattr>");
 
@@ -361,9 +360,9 @@ boost::shared_ptr<scxml_parser::action> scxml_parser::parse_assign(const ptree &
 	return ac;
 }
 
-boost::shared_ptr<scxml_parser::action> scxml_parser::parse_script(const ptree &pt)
+std::shared_ptr<scxml_parser::action> scxml_parser::parse_script(const ptree &pt)
 {
-	boost::shared_ptr<action> ac = boost::make_shared<action>();
+	auto ac = std::make_shared<action>();
 	try {
 		ac->type = "script";
 		ac->attr["expr"] = pt.get_value<string>();
@@ -382,9 +381,9 @@ boost::shared_ptr<scxml_parser::action> scxml_parser::parse_script(const ptree &
 	return ac;
 }
 
-boost::shared_ptr<scxml_parser::transition> scxml_parser::parse_transition(const ptree &pt)
+std::shared_ptr<scxml_parser::transition> scxml_parser::parse_transition(const ptree &pt)
 {
-	boost::shared_ptr<transition> tr = boost::make_shared<transition>();
+	auto tr = std::make_shared<transition>();
 	try {
 		boost::optional<const ptree &> xmlattr(pt.get_child_optional("<xmlattr>"));
 		if (xmlattr) {
